@@ -1,0 +1,78 @@
+name: Terraform PR Checks
+
+on:
+  pull_request:
+    paths:
+      - "modules/**"
+      - "live/**"
+      - "terragrunt.hcl"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  validate-and-tfsec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Install Terragrunt
+        shell: bash
+        run: |
+          TG_VERSION="0.63.6"
+          wget -q "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64"
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Install tfsec
+        shell: bash
+        run: |
+          TFSEC_VERSION="v1.28.11"
+          curl -sSL "https://github.com/aquasecurity/tfsec/releases/download/${TFSEC_VERSION}/tfsec-linux-amd64" -o tfsec
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/tfsec
+          tfsec --version
+
+      - name: Terraform fmt check
+        shell: bash
+        run: terraform fmt -check -recursive modules
+
+      - name: Terraform validate modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r d; do
+            echo "Validating $d"
+            pushd "$d" >/dev/null
+            terraform init -backend=false
+            terraform validate
+            popd >/dev/null
+          done < <(find modules -type d -name terraform | sort)
+
+      - name: tfsec gate (HIGH/CRITICAL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tfsec modules --minimum-severity HIGH --no-color
+
+      - name: tfsec SARIF report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          tfsec modules --format sarif --out tfsec.sarif --soft-fail
+
+      - name: Upload tfsec SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec.sarif

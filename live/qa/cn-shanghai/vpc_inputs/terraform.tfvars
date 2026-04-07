@@ -1,0 +1,2 @@
+# vpc_inputs settings for qa
+# Fill this file with service-specific variables when module implementation starts.

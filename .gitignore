@@ -1,0 +1,15 @@
+# Terraform/Terragrunt
+.terragrunt-cache/
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Plan files
+*.plan
+*.out
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/

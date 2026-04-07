@@ -1,0 +1,39 @@
+name: KICS Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  kics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare output directory
+        shell: bash
+        run: mkdir -p kics-results
+
+      - name: Run KICS (non-blocking)
+        uses: checkmarx/kics-github-action@v2.1.15
+        with:
+          path: "modules,live"
+          platform_type: terraform
+          output_path: kics-results
+          output_formats: "json,sarif"
+          ignore_on_exit: results
+
+      - name: Upload KICS SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: kics-results/results.sarif

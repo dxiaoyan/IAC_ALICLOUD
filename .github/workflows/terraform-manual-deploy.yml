@@ -1,0 +1,257 @@
+name: Terraform Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prd
+      action:
+        description: "Terragrunt action"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      component:
+        description: "Component name (all means staged run)"
+        required: true
+        default: all
+        type: string
+      confirm_token:
+        description: "For prd apply, type APPLY_PRD"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan (${{ inputs.action }})
+    runs-on: ubuntu-latest
+    env:
+      ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      ALICLOUD_REGION: ${{ secrets.ALICLOUD_REGION }}
+      ALICLOUD_TABLESTORE_ENDPOINT: ${{ secrets.ALICLOUD_TABLESTORE_ENDPOINT }}
+      ALICLOUD_TABLESTORE_INSTANCE: ${{ secrets.ALICLOUD_TABLESTORE_INSTANCE }}
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Install Terragrunt
+        shell: bash
+        run: |
+          TG_VERSION="0.63.6"
+          wget -q "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64"
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Pre-checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required=(
+            ALICLOUD_ACCESS_KEY
+            ALICLOUD_SECRET_KEY
+            ALICLOUD_TABLESTORE_ENDPOINT
+            ALICLOUD_TABLESTORE_INSTANCE
+          )
+
+          for k in "${required[@]}"; do
+            if [[ -z "${!k:-}" ]]; then
+              echo "${k} secret is required."
+              exit 1
+            fi
+          done
+
+      - name: Run Terragrunt Plan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ENV_NAME="${{ inputs.environment }}"
+          ACTION="${{ inputs.action }}"
+          COMPONENT="${{ inputs.component }}"
+          BASE_DIR="live/${ENV_NAME}/cn-shanghai"
+
+          run_component_plan() {
+            local comp="$1"
+            local comp_dir="${BASE_DIR}/${comp}"
+
+            if [[ ! -d "${comp_dir}" ]]; then
+              echo "Component not found: ${comp_dir}"
+              exit 1
+            fi
+
+            echo "==== plan ${comp} (action=${ACTION}) ===="
+            pushd "${comp_dir}" >/dev/null
+
+            terragrunt init --terragrunt-non-interactive -reconfigure
+
+            if [[ "${ACTION}" == "destroy" ]]; then
+              terragrunt plan --terragrunt-non-interactive -no-color -destroy
+            else
+              terragrunt plan --terragrunt-non-interactive -no-color
+            fi
+
+            popd >/dev/null
+          }
+
+          if [[ "${COMPONENT}" != "all" ]]; then
+            run_component_plan "${COMPONENT}"
+            exit 0
+          fi
+
+          stage1=(kms ram sls vpc_inputs)
+          stage2=(sg nacl acr eventbridge mns)
+          stage3=(oss nas backup rds_pg redis)
+          stage4=(alb cdn ecs acs fc dataworks)
+
+          if [[ "${ACTION}" == "destroy" ]]; then
+            for comp in "${stage4[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage3[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage2[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage1[@]}"; do run_component_plan "$comp"; done
+          else
+            for comp in "${stage1[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage2[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage3[@]}"; do run_component_plan "$comp"; done
+            for comp in "${stage4[@]}"; do run_component_plan "$comp"; done
+          fi
+
+  execute:
+    name: Execute (${{ inputs.action }})
+    if: ${{ inputs.action != 'plan' }}
+    needs:
+      - plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      ALICLOUD_REGION: ${{ secrets.ALICLOUD_REGION }}
+      ALICLOUD_TABLESTORE_ENDPOINT: ${{ secrets.ALICLOUD_TABLESTORE_ENDPOINT }}
+      ALICLOUD_TABLESTORE_INSTANCE: ${{ secrets.ALICLOUD_TABLESTORE_INSTANCE }}
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Install Terragrunt
+        shell: bash
+        run: |
+          TG_VERSION="0.63.6"
+          wget -q "https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64"
+          chmod +x terragrunt_linux_amd64
+          sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+          terragrunt --version
+
+      - name: Pre-checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required=(
+            ALICLOUD_ACCESS_KEY
+            ALICLOUD_SECRET_KEY
+            ALICLOUD_TABLESTORE_ENDPOINT
+            ALICLOUD_TABLESTORE_INSTANCE
+          )
+
+          for k in "${required[@]}"; do
+            if [[ -z "${!k:-}" ]]; then
+              echo "${k} secret is required."
+              exit 1
+            fi
+          done
+
+          if [[ "${{ inputs.environment }}" == "prd" && "${{ inputs.action }}" == "apply" ]]; then
+            if [[ "${{ inputs.confirm_token }}" != "APPLY_PRD" ]]; then
+              echo "prd apply requires confirm_token=APPLY_PRD"
+              exit 1
+            fi
+          fi
+
+      - name: Run Terragrunt Execute
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ENV_NAME="${{ inputs.environment }}"
+          ACTION="${{ inputs.action }}"
+          COMPONENT="${{ inputs.component }}"
+          BASE_DIR="live/${ENV_NAME}/cn-shanghai"
+
+          run_component_exec() {
+            local comp="$1"
+            local comp_dir="${BASE_DIR}/${comp}"
+
+            if [[ ! -d "${comp_dir}" ]]; then
+              echo "Component not found: ${comp_dir}"
+              exit 1
+            fi
+
+            echo "==== ${ACTION} ${comp} ===="
+            pushd "${comp_dir}" >/dev/null
+
+            terragrunt init --terragrunt-non-interactive -reconfigure
+
+            case "${ACTION}" in
+              apply)
+                terragrunt apply --terragrunt-non-interactive -auto-approve
+                ;;
+              destroy)
+                terragrunt destroy --terragrunt-non-interactive -auto-approve
+                ;;
+              *)
+                echo "Unsupported action: ${ACTION}"
+                exit 1
+                ;;
+            esac
+
+            popd >/dev/null
+          }
+
+          if [[ "${COMPONENT}" != "all" ]]; then
+            run_component_exec "${COMPONENT}"
+            exit 0
+          fi
+
+          stage1=(kms ram sls vpc_inputs)
+          stage2=(sg nacl acr eventbridge mns)
+          stage3=(oss nas backup rds_pg redis)
+          stage4=(alb cdn ecs acs fc dataworks)
+
+          if [[ "${ACTION}" == "destroy" ]]; then
+            for comp in "${stage4[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage3[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage2[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage1[@]}"; do run_component_exec "$comp"; done
+          else
+            for comp in "${stage1[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage2[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage3[@]}"; do run_component_exec "$comp"; done
+            for comp in "${stage4[@]}"; do run_component_exec "$comp"; done
+          fi
