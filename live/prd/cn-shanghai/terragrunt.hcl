@@ -8,8 +8,7 @@ remote_state {
     encrypt          = true
     tablestore_table = "lily_iac_tf_table"
 
-    tablestore_endpoint      = get_env("ALICLOUD_TABLESTORE_ENDPOINT")
-    tablestore_instance_name = get_env("ALICLOUD_TABLESTORE_INSTANCE")
+    tablestore_endpoint = get_env("ALICLOUD_TABLESTORE_ENDPOINT")
   }
   generate = {
     path      = "backend.tf"

@@ -25,6 +25,13 @@ resource "alicloud_vpc" "this" {
   cidr_block  = var.vpc_cidr_block
   description = var.vpc_description
   tags        = var.tags
+
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.vpc_cidr_block) != "" && can(cidrhost(var.vpc_cidr_block, 0))
+      error_message = "When create_vpc=true, vpc_cidr_block must be provided as a valid CIDR."
+    }
+  }
 }
 
 resource "alicloud_vswitch" "this" {
@@ -37,4 +44,21 @@ resource "alicloud_vswitch" "this" {
   vswitch_name = var.vswitch_name
   description  = var.vswitch_description
   tags         = var.tags
+
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.vswitch_cidr_block) != "" && can(cidrhost(var.vswitch_cidr_block, 0))
+      error_message = "When create_vswitch=true, vswitch_cidr_block must be provided as a valid CIDR."
+    }
+
+    precondition {
+      condition     = trimspace(var.vswitch_zone_id) != ""
+      error_message = "When create_vswitch=true, vswitch_zone_id must be provided."
+    }
+
+    precondition {
+      condition     = trimspace(var.create_vpc ? alicloud_vpc.this[0].id : local.upstream_vpc_id) != ""
+      error_message = "When create_vswitch=true, an upstream vpc_id (or create_vpc=true) is required."
+    }
+  }
 }

@@ -51,7 +51,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.5
+          terraform_version: 1.13.2
 
       - name: Install Terragrunt
         shell: bash
@@ -147,13 +147,27 @@ jobs:
             for comp in "${stage4[@]}"; do run_component_plan "$comp"; done
           fi
 
+  approval:
+    name: Manual Approval (${{ inputs.environment }} / ${{ inputs.action }})
+    if: ${{ inputs.action != 'plan' }}
+    needs:
+      - plan
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ format('{0}-approval', inputs.environment) }}
+    steps:
+      - name: Approval checkpoint
+        shell: bash
+        run: |
+          echo "Manual approval granted for environment=${{ inputs.environment }}, action=${{ inputs.action }}."
+
   execute:
     name: Execute (${{ inputs.action }})
     if: ${{ inputs.action != 'plan' }}
     needs:
       - plan
+      - approval
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     env:
       ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
       ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}
@@ -168,7 +182,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.8.5
+          terraform_version: 1.13.2
 
       - name: Install Terragrunt
         shell: bash
