@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   security-events: write
 
 jobs:
@@ -72,7 +73,15 @@ jobs:
           tfsec modules --format sarif --out tfsec.sarif --soft-fail
 
       - name: Upload tfsec SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tfsec.sarif
+          wait-for-processing: false
+
+      - name: Upload tfsec SARIF artifact (fallback for fork PR)
+        if: always() && github.event.pull_request.head.repo.full_name != github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfsec-sarif
+          path: tfsec.sarif
