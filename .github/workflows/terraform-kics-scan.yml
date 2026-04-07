@@ -34,8 +34,15 @@ jobs:
           ignore_on_exit: results
 
       - name: Upload KICS SARIF
-        if: always()
+        if: always() && vars.ENABLE_CODE_SCANNING_UPLOAD == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: kics-results/results.sarif
           wait-for-processing: false
+
+      - name: Upload KICS SARIF artifact (fallback when code scanning disabled)
+        if: always() && vars.ENABLE_CODE_SCANNING_UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kics-sarif
+          path: kics-results/results.sarif
