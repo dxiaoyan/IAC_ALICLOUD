@@ -11,9 +11,9 @@ locals {
 dependency "vpc_inputs" {
   config_path = "../vpc_inputs"
   mock_outputs = {
-    vpc_id = ""
+    vpc_id = "vpc-mock-plan"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 

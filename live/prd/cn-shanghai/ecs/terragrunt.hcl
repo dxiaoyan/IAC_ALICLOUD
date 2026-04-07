@@ -11,19 +11,19 @@ locals {
 dependency "vpc_inputs" {
   config_path = "../vpc_inputs"
   mock_outputs = {
-    vswitch_id     = ""
+    vswitch_id     = "vsw-mock-plan"
     ecs_private_ip = "10.210.32.2"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 dependency "sg" {
   config_path = "../sg"
   mock_outputs = {
-    security_group_id       = ""
-    security_group_ids_list = []
+    security_group_id       = "sg-mock-plan"
+    security_group_ids_list = ["sg-mock-plan"]
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 
