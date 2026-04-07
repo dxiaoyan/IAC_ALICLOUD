@@ -10,8 +10,7 @@ remote_state {
     # IMPORTANT:
     # Set explicit Tablestore endpoint/instance to avoid OSS backend lock init issues.
     # Example endpoint: https://<your-ots-instance>.cn-shanghai.ots.aliyuncs.com
-    tablestore_endpoint      = get_env("ALICLOUD_TABLESTORE_ENDPOINT")
-    tablestore_instance_name = get_env("ALICLOUD_TABLESTORE_INSTANCE")
+    tablestore_endpoint = get_env("ALICLOUD_TABLESTORE_ENDPOINT")
   }
   generate = {
     path      = "backend.tf"

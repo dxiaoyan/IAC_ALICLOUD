@@ -34,8 +34,8 @@ variable "vpc_cidr_block" {
   default     = ""
 
   validation {
-    condition     = !var.create_vpc || (trimspace(var.vpc_cidr_block) != "" && can(cidrhost(var.vpc_cidr_block, 0)))
-    error_message = "When create_vpc=true, vpc_cidr_block must be a valid CIDR."
+    condition     = trimspace(var.vpc_cidr_block) == "" || can(cidrhost(var.vpc_cidr_block, 0))
+    error_message = "vpc_cidr_block must be a valid CIDR when specified."
   }
 }
 
@@ -69,8 +69,8 @@ variable "vswitch_cidr_block" {
   default     = ""
 
   validation {
-    condition     = !var.create_vswitch || (trimspace(var.vswitch_cidr_block) != "" && can(cidrhost(var.vswitch_cidr_block, 0)))
-    error_message = "When create_vswitch=true, vswitch_cidr_block must be a valid CIDR."
+    condition     = trimspace(var.vswitch_cidr_block) == "" || can(cidrhost(var.vswitch_cidr_block, 0))
+    error_message = "vswitch_cidr_block must be a valid CIDR when specified."
   }
 }
 
@@ -80,8 +80,8 @@ variable "vswitch_zone_id" {
   default     = ""
 
   validation {
-    condition     = !var.create_vswitch || trimspace(var.vswitch_zone_id) != ""
-    error_message = "When create_vswitch=true, vswitch_zone_id must be provided."
+    condition     = var.vswitch_zone_id == "" || trimspace(var.vswitch_zone_id) != ""
+    error_message = "vswitch_zone_id cannot be whitespace only."
   }
 }
 

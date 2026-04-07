@@ -53,6 +53,12 @@
     - `action`：`plan|apply|destroy`
     - `component`：组件名或 `all`
     - `confirm_token`：当 `environment=prd` 且 `action=apply` 时必须为 `APPLY_PRD`
+  - 审批卡点：
+    - 当 `action != plan` 时，`plan` 完成后进入人工审批关卡，再执行 `apply/destroy`
+    - 需在仓库 Environment 中配置以下环境及 `Required reviewers`：
+      - `dev-approval`
+      - `qa-approval`
+      - `prd-approval`
 
 - `terraform-kics-scan.yml`
   - 触发：`main` 分支 push + 每周定时 + 手动触发
@@ -79,7 +85,7 @@
 
 ```bash
 # Terraform
-wget -q https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip -O terraform.zip
+wget -q https://releases.hashicorp.com/terraform/1.13.2/terraform_1.13.2_linux_amd64.zip -O terraform.zip
 unzip terraform.zip
 sudo mv terraform /usr/local/bin/
 terraform version
