@@ -55,11 +55,8 @@
     - `confirm_token`：当 `environment=prd` 且 `action=apply` 时必须为 `APPLY_PRD`
   - 审批卡点：
     - 当 `action != plan` 时，`plan` 完成后进入人工审批关卡，再执行 `apply/destroy`
-    - 审批通过 `trstringer/manual-approval` 创建 Issue 并等待审批人确认
-    - 需配置仓库变量：
-      - `APPROVE_USER`（例如：`user1,user2`）
-    - 可选配置仓库 Secret：
-      - `GIT_TOKEN`（未配置时默认使用 `GITHUB_TOKEN`）
+    - 审批通过 GitHub Environment 原生机制完成（Actions 页面点击 `Review deployments`）
+    - 需在仓库 `Settings -> Environments -> dev/qa/prd` 中配置 `Required reviewers`
 
 - `terraform-kics-scan.yml`
   - 触发：`main` 分支 push + 每周定时 + 手动触发

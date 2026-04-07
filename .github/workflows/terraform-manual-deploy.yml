@@ -153,44 +153,12 @@ jobs:
     needs:
       - plan
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      issues: write
-      pull-requests: read
-    env:
-      APPROVE_USER: ${{ vars.APPROVE_USER }}
-      WORKDIR: ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
     steps:
-      - name: Validate approval configuration
+      - name: Approval checkpoint
         shell: bash
         run: |
-          set -euo pipefail
-          if [[ -z "${APPROVE_USER:-}" ]]; then
-            echo "Repository variable APPROVE_USER is required, for example: user1,user2"
-            exit 1
-          fi
-
-      - name: Wait for approval
-        uses: trstringer/manual-approval@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN != '' && secrets.GIT_TOKEN || secrets.GITHUB_TOKEN }}
-        with:
-          secret: ${{ secrets.GIT_TOKEN != '' && secrets.GIT_TOKEN || secrets.GITHUB_TOKEN }}
-          approvers: ${{ env.APPROVE_USER }}
-          minimum-approvals: 1
-          issue-title: "ALICLOUD-IAC 环境${{ env.WORKDIR }}部署审批请求"
-          issue-body: |
-            **部署信息:**
-            - 环境: ${{ inputs.environment }}
-            - 动作: ${{ inputs.action }}
-            - 组件: ${{ inputs.component }}
-            - 提交 SHA: ${{ github.sha }}
-            - 工作流: [查看构建日志](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            请审核并批准此次 ALICLOUD-IAC 环境部署。
-          issue-labels: "deployment,approval-needed"
-          timeout: 1d
+          echo "Waiting for GitHub Environment approval: ${{ inputs.environment }}"
 
   execute:
     name: Execute (${{ inputs.action }})
