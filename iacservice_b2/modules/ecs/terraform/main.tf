@@ -23,7 +23,10 @@ locals {
     tags                       = {}
   }
 
-  instances_raw = length(var.instances) > 0 ? var.instances : (var.create_instance ? [local.legacy_instance] : [])
+  # create_instance acts as a hard switch:
+  # - false: never create ECS, ignore instances/legacy inputs
+  # - true: prefer instances, fallback to legacy single-instance inputs
+  instances_raw = var.create_instance ? (length(var.instances) > 0 ? var.instances : [local.legacy_instance]) : []
 
   instances_effective = [
     for idx, inst in local.instances_raw : merge(
