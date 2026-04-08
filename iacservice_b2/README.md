@@ -30,8 +30,18 @@ The workflow in this project supports:
 - Trigger `terraform apply` using the same module version from plan
 - Poll and export apply result
 
-3. `prd` protection
-- When `environment=prd` and `action=apply`, requires `confirm_token=APPLY_PRD`
+3. `action=destroy`
+- Run destroy-plan first (same run, action `terraform plan -destroy`)
+- Wait for GitHub Environment approval
+- Trigger `terraform destroy` using the same module version from plan stage
+- Poll and export destroy result
+
+4. Approval policy
+- `action=plan`: no approval required
+- `action=apply` or `action=destroy`: approval required
+
+5. `prd` protection
+- When `environment=prd` and `action=apply/destroy`, requires `confirm_token=APPLY_PRD`
 
 ## Required GitHub Environment Secrets
 

@@ -18,13 +18,14 @@ on:
         options:
           - plan
           - apply
+          - destroy
       stacks:
         description: "Comma-separated stack names under stacks/ (e.g. core,network/base)"
         required: true
         default: "core"
         type: string
       confirm_token:
-        description: "For prd apply, input APPLY_PRD"
+        description: "For prd apply/destroy, input APPLY_PRD"
         required: false
         default: ""
         type: string
@@ -72,7 +73,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install alibabacloud_iacservice20210806 PyYAML
 
-      - name: Build package, upload module, trigger plan
+      - name: Build package, upload module, trigger plan/destroy-plan
         id: plan
         shell: bash
         run: |
@@ -83,9 +84,9 @@ jobs:
           STACKS_RAW="${{ inputs.stacks }}"
           PROJECT_DIR="${PROJECT_DIR}"
 
-          if [[ "${ACTION}" == "apply" && "${ENV_NAME}" == "prd" ]]; then
+          if [[ ("${ACTION}" == "apply" || "${ACTION}" == "destroy") && "${ENV_NAME}" == "prd" ]]; then
             if [[ "${{ inputs.confirm_token }}" != "APPLY_PRD" ]]; then
-              echo "prd apply requires confirm_token=APPLY_PRD"
+              echo "prd apply/destroy requires confirm_token=APPLY_PRD"
               exit 1
             fi
           fi
@@ -197,23 +198,28 @@ jobs:
             exit 1
           fi
 
+          PLAN_ACTION="terraform plan"
+          if [[ "${ACTION}" == "destroy" ]]; then
+            PLAN_ACTION="terraform plan -destroy"
+          fi
+
           set +e
           TRIGGER_OUTPUT="$(python scripts/trigger_stack.py \
             --region "${REGION}" \
             --code_module_id "${MODULE_ID}" \
-            --action "terraform plan" \
+            --action "${PLAN_ACTION}" \
             --code_module_version "${VERSION_ID}" \
             --change_folders "${CHANGED_FOLDERS}" 2>&1)"
           TRIGGER_RC=$?
           set -e
           echo "${TRIGGER_OUTPUT}"
           if [[ ${TRIGGER_RC} -ne 0 ]]; then
-            echo "trigger_stack.py(plan) failed with exit code ${TRIGGER_RC}"
+            echo "trigger_stack.py(${PLAN_ACTION}) failed with exit code ${TRIGGER_RC}"
             exit "${TRIGGER_RC}"
           fi
           TRIGGER_ID="$(echo "${TRIGGER_OUTPUT}" | grep -o 'Trigger ID: [^,]*' | sed 's/.*Trigger ID: //')"
           if [[ -z "${TRIGGER_ID}" ]]; then
-            echo "Failed to parse plan trigger id."
+            echo "Failed to parse plan trigger id (${PLAN_ACTION})."
             echo "${TRIGGER_OUTPUT}"
             exit 1
           fi
@@ -237,18 +243,18 @@ jobs:
 
   approval:
     name: Approval
-    if: ${{ inputs.action == 'apply' }}
+    if: ${{ inputs.action == 'apply' || inputs.action == 'destroy' }}
     needs:
       - plan
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
       - name: Approval checkpoint
-        run: echo "Waiting for environment approval before apply."
+        run: echo "Waiting for environment approval before apply/destroy."
 
   apply:
     name: Apply
-    if: ${{ inputs.action == 'apply' }}
+    if: ${{ inputs.action == 'apply' || inputs.action == 'destroy' }}
     needs:
       - plan
       - approval
@@ -283,11 +289,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install alibabacloud_iacservice20210806 PyYAML
 
-      - name: Trigger apply and wait result
+      - name: Trigger action and wait result
         shell: bash
         run: |
           set -euo pipefail
           ENV_NAME="${{ inputs.environment }}"
+          ACTION="${{ inputs.action }}"
+          RESULT_FILE="execution_result_${ACTION}.md"
+          echo "RESULT_FILE=${RESULT_FILE}" >> "$GITHUB_ENV"
           PROJECT_DIR="${PROJECT_DIR}"
           VERSION_ID="${{ needs.plan.outputs.version_id }}"
           CHANGED_FOLDERS="${{ needs.plan.outputs.changed_folders }}"
@@ -358,23 +367,28 @@ jobs:
             exit 1
           fi
 
+          EXEC_ACTION="terraform apply"
+          if [[ "${ACTION}" == "destroy" ]]; then
+            EXEC_ACTION="terraform destroy"
+          fi
+
           set +e
           TRIGGER_OUTPUT="$(python scripts/trigger_stack.py \
             --region "${REGION}" \
             --code_module_id "${MODULE_ID}" \
-            --action "terraform apply" \
+            --action "${EXEC_ACTION}" \
             --code_module_version "${VERSION_ID}" \
             --change_folders "${CHANGED_FOLDERS}" 2>&1)"
           TRIGGER_RC=$?
           set -e
           echo "${TRIGGER_OUTPUT}"
           if [[ ${TRIGGER_RC} -ne 0 ]]; then
-            echo "trigger_stack.py(apply) failed with exit code ${TRIGGER_RC}"
+            echo "trigger_stack.py(${EXEC_ACTION}) failed with exit code ${TRIGGER_RC}"
             exit "${TRIGGER_RC}"
           fi
           TRIGGER_ID="$(echo "${TRIGGER_OUTPUT}" | grep -o 'Trigger ID: [^,]*' | sed 's/.*Trigger ID: //')"
           if [[ -z "${TRIGGER_ID}" ]]; then
-            echo "Failed to parse apply trigger id."
+            echo "Failed to parse trigger id (${EXEC_ACTION})."
             echo "${TRIGGER_OUTPUT}"
             exit 1
           fi
@@ -383,12 +397,12 @@ jobs:
             --code-path "." \
             --region "${REGION}" \
             --result-path "${ENV_NAME}@${TRIGGER_ID}" \
-            --output-file "execution_result_apply.md" \
+            --output-file "${RESULT_FILE}" \
             --max-wait-time 1200
 
-      - name: Upload apply result
+      - name: Upload action result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iacservice-apply-result-${{ inputs.environment }}
-          path: iacservice_b2/execution_result_apply.md
+          name: iacservice-${{ inputs.action }}-result-${{ inputs.environment }}
+          path: iacservice_b2/${{ env.RESULT_FILE }}
