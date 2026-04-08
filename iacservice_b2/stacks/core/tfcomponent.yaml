@@ -20,7 +20,7 @@ variable:
     default: lilly-vpc
   - name: vpc_description
     type: string
-    default: Lilly VPC managed by Terraform
+    default: "Lilly VPC managed by Terraform"
   - name: vpc_cidr_block
     type: string
     default: ""
@@ -36,7 +36,7 @@ variable:
     default: lilly-vswitch
   - name: vswitch_description
     type: string
-    default: Lilly vSwitch managed by Terraform
+    default: "Lilly vSwitch managed by Terraform"
   - name: vswitch_cidr_block
     type: string
     default: ""
@@ -55,7 +55,7 @@ variable:
     default: lilly-template-sg
   - name: security_group_description
     type: string
-    default: Lilly template security group
+    default: "Lilly template security group"
   - name: ingress_rules
     type: any
     default: []
