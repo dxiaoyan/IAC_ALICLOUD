@@ -51,7 +51,7 @@ jobs:
       IAC_ACCESS_KEY_ID: ${{ secrets.ALICLOUD_ACCESS_KEY }}
       IAC_ACCESS_KEY_SECRET: ${{ secrets.ALICLOUD_SECRET_KEY }}
       IAC_ACCOUNT_ID: ${{ secrets.ALICLOUD_ACCOUNT_ID }}
-      IAC_CODE_MODULE_ID: ${{ secrets.IAC_CODE_MODULE_ID }}
+      IAC_CODE_MODULE_ID: ${{ secrets.LILLY_DEV_MODULE_ID }}
       IAC_REGION: ${{ secrets.ALICLOUD_REGION }}
     steps:
       - name: Checkout
