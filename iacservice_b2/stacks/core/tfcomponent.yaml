@@ -4,7 +4,7 @@ description: Lilly core stack with vpc_inputs + sg + ecs
 variable:
   - name: region
     type: string
-    default: cn-shanghai
+    default: "cn-shanghai"
   - name: global
     type: any
     default: {}
@@ -17,7 +17,7 @@ variable:
     default: false
   - name: vpc_name
     type: string
-    default: lilly-vpc
+    default: "lilly-vpc"
   - name: vpc_description
     type: string
     default: "Lilly VPC managed by Terraform"
@@ -33,7 +33,7 @@ variable:
     default: false
   - name: vswitch_name
     type: string
-    default: lilly-vswitch
+    default: "lilly-vswitch"
   - name: vswitch_description
     type: string
     default: "Lilly vSwitch managed by Terraform"
@@ -52,7 +52,7 @@ variable:
     default: true
   - name: security_group_name
     type: string
-    default: lilly-template-sg
+    default: "lilly-template-sg"
   - name: security_group_description
     type: string
     default: "Lilly template security group"
@@ -71,13 +71,13 @@ variable:
     default: []
   - name: instance_name
     type: string
-    default: lilly-template-ecs-01
+    default: "lilly-template-ecs-01"
   - name: instance_type
     type: string
-    default: ecs.c6.large
+    default: "ecs.c6.large"
   - name: availability_zone
     type: string
-    default: cn-shanghai-e
+    default: "cn-shanghai-e"
   - name: image_id
     type: string
     default: ""
@@ -90,20 +90,20 @@ variable:
     sensitive: true
   - name: internet_charge_type
     type: string
-    default: PayByTraffic
+    default: "PayByTraffic"
   - name: internet_max_bandwidth_out
     type: number
     default: 0
   - name: system_disk_category
     type: string
-    default: cloud_essd
+    default: "cloud_essd"
   - name: system_disk_size
     type: number
     default: 80
 
 required_providers:
   - name: alicloud
-    source: hashicorp/alicloud
+    source: aliyun/alicloud
     version: "~> 1.251.0"
 
 provider:
@@ -188,4 +188,3 @@ output:
   - name: ecs_instance_ids
     type: map(string)
     value: component.ecs.instance_ids
-
