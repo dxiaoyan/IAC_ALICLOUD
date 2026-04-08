@@ -253,7 +253,6 @@ jobs:
       - plan
       - approval
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     env:
       ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
       ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}

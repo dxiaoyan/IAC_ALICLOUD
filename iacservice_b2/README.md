@@ -38,7 +38,7 @@ The workflow in this project supports:
 
 4. Approval policy
 - `action=plan`: no approval required (plan job does not bind GitHub Environment)
-- `action=apply` or `action=destroy`: approval required
+- `action=apply` or `action=destroy`: approval required (single approval at `approval` job)
 
 5. `prd` protection
 - When `environment=prd` and `action=apply/destroy`, requires `confirm_token=APPLY_PRD`
