@@ -37,7 +37,7 @@ The workflow in this project supports:
 - Poll and export destroy result
 
 4. Approval policy
-- `action=plan`: no approval required
+- `action=plan`: no approval required (plan job does not bind GitHub Environment)
 - `action=apply` or `action=destroy`: approval required
 
 5. `prd` protection

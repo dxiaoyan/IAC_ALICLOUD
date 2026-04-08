@@ -40,7 +40,6 @@ jobs:
   plan:
     name: Plan
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     outputs:
       version_id: ${{ steps.plan.outputs.version_id }}
       changed_folders: ${{ steps.plan.outputs.changed_folders }}
