@@ -31,7 +31,7 @@ The workflow in this project supports:
 - Poll and export apply result
 
 3. `action=destroy`
-- Run destroy-plan first (same run, action `terraform plan -destroy`)
+- Run normal plan first (same run, action `terraform plan`)
 - Wait for GitHub Environment approval
 - Trigger `terraform destroy` using the same module version from plan stage
 - Poll and export destroy result
