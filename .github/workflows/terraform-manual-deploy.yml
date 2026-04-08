@@ -148,18 +148,17 @@ jobs:
           fi
 
   approval:
-    name: Manual Approval (${{ inputs.environment }} / ${{ inputs.action }})
+    name: Approval
     if: ${{ inputs.action != 'plan' }}
     needs:
       - plan
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ format('{0}-approval', inputs.environment) }}
+    environment: ${{ inputs.environment }}
     steps:
       - name: Approval checkpoint
         shell: bash
         run: |
-          echo "Manual approval granted for environment=${{ inputs.environment }}, action=${{ inputs.action }}."
+          echo "Waiting for GitHub Environment approval: ${{ inputs.environment }}"
 
   execute:
     name: Execute (${{ inputs.action }})

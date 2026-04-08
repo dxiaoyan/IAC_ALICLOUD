@@ -1,0 +1,191 @@
+format_version: IaCService/2021-08-06
+description: Lilly core stack with vpc_inputs + sg + ecs
+
+variable:
+  - name: region
+    type: string
+    default: cn-shanghai
+  - name: global
+    type: any
+    default: {}
+  - name: tags
+    type: map(string)
+    default: {}
+
+  - name: create_vpc
+    type: bool
+    default: false
+  - name: vpc_name
+    type: string
+    default: lilly-vpc
+  - name: vpc_description
+    type: string
+    default: Lilly VPC managed by Terraform
+  - name: vpc_cidr_block
+    type: string
+    default: ""
+  - name: existing_vpc_id
+    type: string
+    default: ""
+
+  - name: create_vswitch
+    type: bool
+    default: false
+  - name: vswitch_name
+    type: string
+    default: lilly-vswitch
+  - name: vswitch_description
+    type: string
+    default: Lilly vSwitch managed by Terraform
+  - name: vswitch_cidr_block
+    type: string
+    default: ""
+  - name: vswitch_zone_id
+    type: string
+    default: ""
+  - name: existing_vswitch_id
+    type: string
+    default: ""
+
+  - name: create_security_group
+    type: bool
+    default: true
+  - name: security_group_name
+    type: string
+    default: lilly-template-sg
+  - name: security_group_description
+    type: string
+    default: Lilly template security group
+  - name: ingress_rules
+    type: any
+    default: []
+  - name: egress_rules
+    type: any
+    default: []
+
+  - name: create_instance
+    type: bool
+    default: true
+  - name: instances
+    type: any
+    default: []
+  - name: instance_name
+    type: string
+    default: lilly-template-ecs-01
+  - name: instance_type
+    type: string
+    default: ecs.c6.large
+  - name: availability_zone
+    type: string
+    default: cn-shanghai-e
+  - name: image_id
+    type: string
+    default: ""
+  - name: key_name
+    type: string
+    default: ""
+  - name: password
+    type: string
+    default: ""
+    sensitive: true
+  - name: internet_charge_type
+    type: string
+    default: PayByTraffic
+  - name: internet_max_bandwidth_out
+    type: number
+    default: 0
+  - name: system_disk_category
+    type: string
+    default: cloud_essd
+  - name: system_disk_size
+    type: number
+    default: 80
+
+required_providers:
+  - name: alicloud
+    source: hashicorp/alicloud
+    version: "~> 1.251.0"
+
+provider:
+  - type: alicloud
+    name: this
+    config:
+      region: var.region
+
+component:
+  - name: vpc_inputs
+    source: "../../modules/vpc_inputs/terraform"
+    inputs:
+      global: var.global
+      tags: var.tags
+      create_vpc: var.create_vpc
+      vpc_name: var.vpc_name
+      vpc_description: var.vpc_description
+      vpc_cidr_block: var.vpc_cidr_block
+      existing_vpc_id: var.existing_vpc_id
+      create_vswitch: var.create_vswitch
+      vswitch_name: var.vswitch_name
+      vswitch_description: var.vswitch_description
+      vswitch_cidr_block: var.vswitch_cidr_block
+      vswitch_zone_id: var.vswitch_zone_id
+      existing_vswitch_id: var.existing_vswitch_id
+    providers:
+      alicloud: provider.alicloud.this
+
+  - name: sg
+    source: "../../modules/sg/terraform"
+    inputs:
+      global: var.global
+      tags: var.tags
+      create_security_group: var.create_security_group
+      security_group_name: var.security_group_name
+      security_group_description: var.security_group_description
+      vpc_id: component.vpc_inputs.vpc_id
+      ingress_rules: var.ingress_rules
+      egress_rules: var.egress_rules
+    providers:
+      alicloud: provider.alicloud.this
+    depends_on:
+      - component.vpc_inputs
+
+  - name: ecs
+    source: "../../modules/ecs/terraform"
+    inputs:
+      global: var.global
+      tags: var.tags
+      create_instance: var.create_instance
+      instances: var.instances
+      instance_name: var.instance_name
+      instance_type: var.instance_type
+      availability_zone: var.availability_zone
+      image_id: var.image_id
+      vswitch_id: component.vpc_inputs.vswitch_id
+      security_group_ids:
+        - component.sg.security_group_id
+      private_ip: component.vpc_inputs.ecs_private_ip
+      key_name: var.key_name
+      password: var.password
+      internet_charge_type: var.internet_charge_type
+      internet_max_bandwidth_out: var.internet_max_bandwidth_out
+      system_disk_category: var.system_disk_category
+      system_disk_size: var.system_disk_size
+    providers:
+      alicloud: provider.alicloud.this
+    depends_on:
+      - component.vpc_inputs
+      - component.sg
+
+output:
+  - name: vpc_id
+    type: string
+    value: component.vpc_inputs.vpc_id
+  - name: vswitch_id
+    type: string
+    value: component.vpc_inputs.vswitch_id
+  - name: security_group_id
+    type: string
+    value: component.sg.security_group_id
+  - name: ecs_instance_ids
+    type: map(string)
+    value: component.ecs.instance_ids
+

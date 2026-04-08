@@ -55,10 +55,8 @@
     - `confirm_token`：当 `environment=prd` 且 `action=apply` 时必须为 `APPLY_PRD`
   - 审批卡点：
     - 当 `action != plan` 时，`plan` 完成后进入人工审批关卡，再执行 `apply/destroy`
-    - 需在仓库 Environment 中配置以下环境及 `Required reviewers`：
-      - `dev-approval`
-      - `qa-approval`
-      - `prd-approval`
+    - 审批通过 GitHub Environment 原生机制完成（Actions 页面点击 `Review deployments`）
+    - 需在仓库 `Settings -> Environments -> dev/qa/prd` 中配置 `Required reviewers`
 
 - `terraform-kics-scan.yml`
   - 触发：`main` 分支 push + 每周定时 + 手动触发

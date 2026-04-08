@@ -1,0 +1,346 @@
+name: IacService Manual Deploy (B2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment profile"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prd
+      action:
+        description: "Action mode"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+      stacks:
+        description: "Comma-separated stack names under stacks/ (e.g. core,network/base)"
+        required: true
+        default: "core"
+        type: string
+      confirm_token:
+        description: "For prd apply, input APPLY_PRD"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_DIR: iacservice_b2
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      version_id: ${{ steps.plan.outputs.version_id }}
+      changed_folders: ${{ steps.plan.outputs.changed_folders }}
+    env:
+      ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      ALICLOUD_REGION: ${{ secrets.ALICLOUD_REGION }}
+      ALICLOUD_ACCOUNT_ID: ${{ secrets.ALICLOUD_ACCOUNT_ID }}
+      IAC_ACCESS_KEY_ID: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      IAC_ACCESS_KEY_SECRET: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      IAC_ACCOUNT_ID: ${{ secrets.ALICLOUD_ACCOUNT_ID }}
+      IAC_CODE_MODULE_ID: ${{ secrets.IAC_CODE_MODULE_ID }}
+      IAC_REGION: ${{ secrets.ALICLOUD_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install alibabacloud_iacservice20210806 PyYAML
+
+      - name: Build package, upload module, trigger plan
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ENV_NAME="${{ inputs.environment }}"
+          ACTION="${{ inputs.action }}"
+          STACKS_RAW="${{ inputs.stacks }}"
+          PROJECT_DIR="${PROJECT_DIR}"
+
+          if [[ "${ACTION}" == "apply" && "${ENV_NAME}" == "prd" ]]; then
+            if [[ "${{ inputs.confirm_token }}" != "APPLY_PRD" ]]; then
+              echo "prd apply requires confirm_token=APPLY_PRD"
+              exit 1
+            fi
+          fi
+
+          if [[ -z "${IAC_ACCESS_KEY_ID:-}" || -z "${IAC_ACCESS_KEY_SECRET:-}" ]]; then
+            echo "ALICLOUD_ACCESS_KEY/ALICLOUD_SECRET_KEY are required (set in GitHub Environment secrets)."
+            exit 1
+          fi
+
+          cd "${PROJECT_DIR}"
+          chmod +x scripts/yq scripts/*.py
+
+          make build-package PROFILE="${ENV_NAME}"
+
+          PROFILE_FILE=".build/${ENV_NAME}/stacks/profile.yaml"
+          if [[ ! -f "${PROFILE_FILE}" ]]; then
+            echo "Profile file not found after build: ${PROFILE_FILE}"
+            exit 1
+          fi
+
+          resolve_profile_value() {
+            local raw="$1"
+            raw="$(echo "${raw}" | xargs || true)"
+            if [[ -z "${raw}" || "${raw}" == "null" ]]; then
+              echo ""
+              return
+            fi
+            if [[ "${raw}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              if [[ -n "${!raw:-}" ]]; then
+                echo "${!raw}"
+              else
+                echo ""
+              fi
+            else
+              echo "${raw}"
+            fi
+          }
+
+          ACCOUNT_ID_FROM_PROFILE_RAW="$(./scripts/yq '.account_id' "${PROFILE_FILE}" | tr -d '"' || true)"
+          REGION_FROM_PROFILE_RAW="$(./scripts/yq '.region' "${PROFILE_FILE}" | tr -d '"' || true)"
+          MODULE_ID_FROM_PROFILE_RAW="$(./scripts/yq '.code_module_id' "${PROFILE_FILE}" | tr -d '"' || true)"
+
+          ACCOUNT_ID_FROM_PROFILE="$(resolve_profile_value "${ACCOUNT_ID_FROM_PROFILE_RAW}")"
+          REGION_FROM_PROFILE="$(resolve_profile_value "${REGION_FROM_PROFILE_RAW}")"
+          MODULE_ID_FROM_PROFILE="$(resolve_profile_value "${MODULE_ID_FROM_PROFILE_RAW}")"
+
+          REGION="${REGION_FROM_PROFILE:-${IAC_REGION:-cn-zhangjiakou}}"
+          MODULE_ID="${IAC_CODE_MODULE_ID:-${MODULE_ID_FROM_PROFILE}}"
+
+          if [[ -n "${ACCOUNT_ID_FROM_PROFILE}" ]]; then
+            echo "Resolved account_id for profile ${ENV_NAME}: ${ACCOUNT_ID_FROM_PROFILE}"
+          fi
+
+          if [[ -z "${REGION}" ]]; then
+            echo "IacService region is empty. Set ALICLOUD_REGION secret or profile.yaml region."
+            exit 1
+          fi
+
+          if [[ -z "${MODULE_ID}" ]]; then
+            echo "IacService module id is empty. Set IAC_CODE_MODULE_ID secret or profile.yaml code_module_id."
+            exit 1
+          fi
+
+          ZIP_FILE="code-${ENV_NAME}.zip"
+          if [[ ! -f "${ZIP_FILE}" ]]; then
+            echo "Package not found: ${ZIP_FILE}"
+            exit 1
+          fi
+
+          UPLOAD_OUTPUT="$(python scripts/upload_iac_module.py --region "${REGION}" --code_module_id "${MODULE_ID}" --file_path "${ZIP_FILE}")"
+          VERSION_ID="$(echo "${UPLOAD_OUTPUT}" | grep -o 'Version ID: [^,]*' | sed 's/.*Version ID: //')"
+          if [[ -z "${VERSION_ID}" ]]; then
+            echo "Failed to parse module version id from upload output."
+            echo "${UPLOAD_OUTPUT}"
+            exit 1
+          fi
+
+          IFS=',' read -ra STACK_ARR <<< "${STACKS_RAW}"
+          CHANGED_FOLDERS=""
+          for s in "${STACK_ARR[@]}"; do
+            s="$(echo "${s}" | xargs)"
+            [[ -z "${s}" ]] && continue
+            [[ "${s}" != */ ]] && s="${s}/"
+            if [[ -z "${CHANGED_FOLDERS}" ]]; then
+              CHANGED_FOLDERS="stacks/${s}"
+            else
+              CHANGED_FOLDERS="${CHANGED_FOLDERS},stacks/${s}"
+            fi
+          done
+          if [[ -z "${CHANGED_FOLDERS}" ]]; then
+            echo "No valid stacks provided."
+            exit 1
+          fi
+
+          TRIGGER_OUTPUT="$(python scripts/trigger_stack.py \
+            --region "${REGION}" \
+            --code_module_id "${MODULE_ID}" \
+            --action "terraform plan" \
+            --code_module_version "${VERSION_ID}" \
+            --change_folders "${CHANGED_FOLDERS}")"
+          TRIGGER_ID="$(echo "${TRIGGER_OUTPUT}" | grep -o 'Trigger ID: [^,]*' | sed 's/.*Trigger ID: //')"
+          if [[ -z "${TRIGGER_ID}" ]]; then
+            echo "Failed to parse plan trigger id."
+            echo "${TRIGGER_OUTPUT}"
+            exit 1
+          fi
+
+          python scripts/get_trigger_result.py \
+            --code-path "." \
+            --region "${REGION}" \
+            --result-path "${ENV_NAME}@${TRIGGER_ID}" \
+            --output-file "execution_result_plan.md" \
+            --max-wait-time 900
+
+          echo "version_id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
+          echo "changed_folders=${CHANGED_FOLDERS}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload plan result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iacservice-plan-result-${{ inputs.environment }}
+          path: iacservice_b2/execution_result_plan.md
+
+  approval:
+    name: Approval
+    if: ${{ inputs.action == 'apply' }}
+    needs:
+      - plan
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Approval checkpoint
+        run: echo "Waiting for environment approval before apply."
+
+  apply:
+    name: Apply
+    if: ${{ inputs.action == 'apply' }}
+    needs:
+      - plan
+      - approval
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      ALICLOUD_ACCESS_KEY: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      ALICLOUD_SECRET_KEY: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      ALICLOUD_REGION: ${{ secrets.ALICLOUD_REGION }}
+      ALICLOUD_ACCOUNT_ID: ${{ secrets.ALICLOUD_ACCOUNT_ID }}
+      IAC_ACCESS_KEY_ID: ${{ secrets.ALICLOUD_ACCESS_KEY }}
+      IAC_ACCESS_KEY_SECRET: ${{ secrets.ALICLOUD_SECRET_KEY }}
+      IAC_ACCOUNT_ID: ${{ secrets.ALICLOUD_ACCOUNT_ID }}
+      IAC_CODE_MODULE_ID: ${{ secrets.IAC_CODE_MODULE_ID }}
+      IAC_REGION: ${{ secrets.ALICLOUD_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install alibabacloud_iacservice20210806 PyYAML
+
+      - name: Trigger apply and wait result
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV_NAME="${{ inputs.environment }}"
+          PROJECT_DIR="${PROJECT_DIR}"
+          VERSION_ID="${{ needs.plan.outputs.version_id }}"
+          CHANGED_FOLDERS="${{ needs.plan.outputs.changed_folders }}"
+
+          if [[ -z "${VERSION_ID}" || -z "${CHANGED_FOLDERS}" ]]; then
+            echo "Missing version_id or changed_folders from plan stage."
+            exit 1
+          fi
+
+          if [[ -z "${IAC_ACCESS_KEY_ID:-}" || -z "${IAC_ACCESS_KEY_SECRET:-}" ]]; then
+            echo "ALICLOUD_ACCESS_KEY/ALICLOUD_SECRET_KEY are required."
+            exit 1
+          fi
+
+          cd "${PROJECT_DIR}"
+          chmod +x scripts/yq scripts/*.py
+
+          PROFILE_FILE="deployments/${ENV_NAME}/profile.yaml"
+          resolve_profile_value() {
+            local raw="$1"
+            raw="$(echo "${raw}" | xargs || true)"
+            if [[ -z "${raw}" || "${raw}" == "null" ]]; then
+              echo ""
+              return
+            fi
+            if [[ "${raw}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              if [[ -n "${!raw:-}" ]]; then
+                echo "${!raw}"
+              else
+                echo ""
+              fi
+            else
+              echo "${raw}"
+            fi
+          }
+
+          ACCOUNT_ID_FROM_PROFILE_RAW="$(./scripts/yq '.account_id' "${PROFILE_FILE}" | tr -d '"' || true)"
+          REGION_FROM_PROFILE_RAW="$(./scripts/yq '.region' "${PROFILE_FILE}" | tr -d '"' || true)"
+          MODULE_ID_FROM_PROFILE_RAW="$(./scripts/yq '.code_module_id' "${PROFILE_FILE}" | tr -d '"' || true)"
+
+          ACCOUNT_ID_FROM_PROFILE="$(resolve_profile_value "${ACCOUNT_ID_FROM_PROFILE_RAW}")"
+          REGION_FROM_PROFILE="$(resolve_profile_value "${REGION_FROM_PROFILE_RAW}")"
+          MODULE_ID_FROM_PROFILE="$(resolve_profile_value "${MODULE_ID_FROM_PROFILE_RAW}")"
+
+          REGION="${REGION_FROM_PROFILE:-${IAC_REGION:-cn-zhangjiakou}}"
+          MODULE_ID="${IAC_CODE_MODULE_ID:-${MODULE_ID_FROM_PROFILE}}"
+
+          if [[ -n "${ACCOUNT_ID_FROM_PROFILE}" ]]; then
+            echo "Resolved account_id for profile ${ENV_NAME}: ${ACCOUNT_ID_FROM_PROFILE}"
+          fi
+
+          if [[ -z "${REGION}" ]]; then
+            echo "IacService region is empty. Set ALICLOUD_REGION secret or profile.yaml region."
+            exit 1
+          fi
+
+          if [[ -z "${MODULE_ID}" ]]; then
+            echo "IacService module id is empty."
+            exit 1
+          fi
+
+          TRIGGER_OUTPUT="$(python scripts/trigger_stack.py \
+            --region "${REGION}" \
+            --code_module_id "${MODULE_ID}" \
+            --action "terraform apply" \
+            --code_module_version "${VERSION_ID}" \
+            --change_folders "${CHANGED_FOLDERS}")"
+          TRIGGER_ID="$(echo "${TRIGGER_OUTPUT}" | grep -o 'Trigger ID: [^,]*' | sed 's/.*Trigger ID: //')"
+          if [[ -z "${TRIGGER_ID}" ]]; then
+            echo "Failed to parse apply trigger id."
+            echo "${TRIGGER_OUTPUT}"
+            exit 1
+          fi
+
+          python scripts/get_trigger_result.py \
+            --code-path "." \
+            --region "${REGION}" \
+            --result-path "${ENV_NAME}@${TRIGGER_ID}" \
+            --output-file "execution_result_apply.md" \
+            --max-wait-time 1200
+
+      - name: Upload apply result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iacservice-apply-result-${{ inputs.environment }}
+          path: iacservice_b2/execution_result_apply.md

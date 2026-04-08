@@ -1,0 +1,97 @@
+format_version: IaCService/2021-08-06
+description: Lilly dev core deployment
+
+deployment:
+  - name: dev-core
+    inputs:
+      region: "cn-shanghai"
+
+      global:
+        project: "lilly"
+        environment: "dev"
+        region: "cn-shanghai"
+        timezone: "Asia/Shanghai"
+        vpc:
+          test_cidr: "10.210.0.0/20"
+          vpc_id: ""
+          vswitch_id: ""
+          ecs_private_ip: ""
+
+      tags:
+        Project: "lilly"
+        Environment: "dev"
+        ManagedBy: "terraform-terragrunt"
+        Owner: "platform"
+
+      create_vpc: true
+      vpc_name: "lilly-dev-vpc"
+      vpc_description: "Lilly dev VPC for IaC template"
+      vpc_cidr_block: "10.210.0.0/16"
+      existing_vpc_id: ""
+
+      create_vswitch: true
+      vswitch_name: "lilly-dev-vsw-e"
+      vswitch_description: "Lilly dev ECS test vSwitch"
+      vswitch_cidr_block: "10.210.0.0/20"
+      vswitch_zone_id: "cn-shanghai-e"
+      existing_vswitch_id: ""
+
+      create_security_group: true
+      security_group_name: "lilly-dev-template-sg"
+      security_group_description: "Template SG for dev"
+      ingress_rules:
+        - description: "Allow SSH from dev test CIDR"
+          ip_protocol: "tcp"
+          nic_type: "intranet"
+          policy: "accept"
+          port_range: "22/22"
+          priority: 10
+          cidr_ip: "10.210.0.0/20"
+        - description: "Allow HTTPS from dev test CIDR"
+          ip_protocol: "tcp"
+          nic_type: "intranet"
+          policy: "accept"
+          port_range: "443/443"
+          priority: 20
+          cidr_ip: "10.210.0.0/20"
+      egress_rules:
+        - description: "Allow all outbound traffic"
+          ip_protocol: "all"
+          nic_type: "intranet"
+          policy: "accept"
+          port_range: "-1/-1"
+          priority: 1
+          cidr_ip: "0.0.0.0/0"
+
+      create_instance: true
+      instances:
+        - instance_name: "lilly-dev-app-01"
+          instance_type: "ecs.c6.large"
+          availability_zone: "cn-shanghai-e"
+          image_id: "aliyun_3_x64_20G_alibase_20260122.vhd"
+          instance_charge_type: "PostPaid"
+          internet_charge_type: "PayByTraffic"
+          internet_max_bandwidth_out: 0
+          system_disk_category: "cloud_essd"
+          system_disk_size: 80
+          key_name: "lilly-dev-keypair"
+          password: ""
+          user_data: |
+            #!/bin/bash
+            set -e
+            hostnamectl set-hostname lilly-dev-template-ecs-01
+        - instance_name: "lilly-dev-app-02"
+          instance_type: "ecs.c6.large"
+          availability_zone: "cn-shanghai-e"
+          image_id: "aliyun_3_x64_20G_alibase_20260122.vhd"
+          instance_charge_type: "PostPaid"
+          internet_charge_type: "PayByTraffic"
+          internet_max_bandwidth_out: 0
+          system_disk_category: "cloud_essd"
+          system_disk_size: 80
+          key_name: "lilly-dev-keypair"
+          password: ""
+          user_data: |
+            #!/bin/bash
+            set -e
+            hostnamectl set-hostname lilly-dev-template-ecs-01

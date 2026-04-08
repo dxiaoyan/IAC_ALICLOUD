@@ -11,19 +11,19 @@ locals {
 dependency "vpc_inputs" {
   config_path = "../vpc_inputs"
   mock_outputs = {
-    vswitch_id     = ""
+    vswitch_id     = "vsw-mock-plan"
     ecs_private_ip = "10.210.0.2"
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 dependency "sg" {
   config_path = "../sg"
   mock_outputs = {
-    security_group_id       = ""
-    security_group_ids_list = []
+    security_group_id       = "sg-mock-plan"
+    security_group_ids_list = ["sg-mock-plan"]
   }
-  mock_outputs_allowed_terraform_commands = ["init", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
 }
 
 dependencies {
@@ -55,4 +55,3 @@ inputs = {
   # Prefer SG batch output; fallback to single-ID output for compatibility.
   security_group_ids = try(length(dependency.sg.outputs.security_group_ids_list), 0) > 0 ? dependency.sg.outputs.security_group_ids_list : compact([trimspace(try(dependency.sg.outputs.security_group_id, ""))])
 }
-
