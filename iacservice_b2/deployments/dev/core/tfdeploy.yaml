@@ -13,8 +13,8 @@ deployment:
         timezone: "Asia/Shanghai"
         vpc:
           test_cidr: "10.210.0.0/20"
-          vpc_id: ""
-          vswitch_id: ""
+          vpc_id: {{PROFILE.vpc_id}}
+          vswitch_id: {{PROFILE.vswitch_id}}
           ecs_private_ip: ""
 
       tags:
