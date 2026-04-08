@@ -1,0 +1,48 @@
+format_version: IaCService/2021-08-06
+description: Lilly qa core deployment
+
+deployment:
+  - name: qa-core
+    inputs:
+      region: "cn-shanghai"
+
+      global:
+        project: "lilly"
+        environment: "qa"
+        region: "cn-shanghai"
+        timezone: "Asia/Shanghai"
+        vpc:
+          test_cidr: "10.210.16.0/20"
+          vpc_id: ""
+          vswitch_id: ""
+          ecs_private_ip: ""
+
+      tags:
+        Project: "lilly"
+        Environment: "qa"
+        ManagedBy: "terraform-terragrunt"
+        Owner: "platform"
+
+      create_vpc: false
+      create_vswitch: false
+      existing_vpc_id: ""
+      existing_vswitch_id: ""
+
+      create_security_group: false
+      security_group_name: "lilly-qa-template-sg"
+      security_group_description: "Template SG for qa"
+      ingress_rules: []
+      egress_rules: []
+
+      create_instance: false
+      instances: []
+      instance_name: "lilly-qa-template-ecs-01"
+      instance_type: "ecs.c6.large"
+      availability_zone: "cn-shanghai-e"
+      image_id: ""
+      key_name: ""
+      password: ""
+      internet_charge_type: "PayByTraffic"
+      internet_max_bandwidth_out: 0
+      system_disk_category: "cloud_essd"
+      system_disk_size: 80

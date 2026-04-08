@@ -1,0 +1,6 @@
+.build/
+*.zip
+execution_result_*.md
+__pycache__/
+*.pyc
+*.pyc.*
