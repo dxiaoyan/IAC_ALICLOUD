@@ -3,6 +3,6 @@ code_module_id: LILLY_DEV_MODULE_ID
 region: ALICLOUD_REGION
 access_key_id: ALICLOUD_ACCESS_KEY
 access_key_secret: ALICLOUD_SECRET_KEY
-vpc_id: ""
-vswitch_id: ""
+vpc_id: "vpc-uf6ucxlr76pdz2nnpmvxb"
+vswitch_id: "vsw-uf60lfcezcz5taj2o8sqi"
 ecs_private_ip: ""
