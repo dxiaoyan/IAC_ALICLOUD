@@ -103,6 +103,7 @@ jobs:
 
           resolve_profile_value() {
             local raw="$1"
+            local resolved=""
             raw="$(echo "${raw}" | xargs || true)"
             if [[ -z "${raw}" || "${raw}" == "null" ]]; then
               echo ""
@@ -110,12 +111,14 @@ jobs:
             fi
             if [[ "${raw}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
               if [[ -n "${!raw:-}" ]]; then
-                echo "${!raw}"
+                resolved="$(echo "${!raw}" | xargs || true)"
+                echo "${resolved}"
               else
                 echo ""
               fi
             else
-              echo "${raw}"
+              resolved="$(echo "${raw}" | xargs || true)"
+              echo "${resolved}"
             fi
           }
 
@@ -300,6 +303,7 @@ jobs:
           PROFILE_FILE="deployments/${ENV_NAME}/profile.yaml"
           resolve_profile_value() {
             local raw="$1"
+            local resolved=""
             raw="$(echo "${raw}" | xargs || true)"
             if [[ -z "${raw}" || "${raw}" == "null" ]]; then
               echo ""
@@ -307,12 +311,14 @@ jobs:
             fi
             if [[ "${raw}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
               if [[ -n "${!raw:-}" ]]; then
-                echo "${!raw}"
+                resolved="$(echo "${!raw}" | xargs || true)"
+                echo "${resolved}"
               else
                 echo ""
               fi
             else
-              echo "${raw}"
+              resolved="$(echo "${raw}" | xargs || true)"
+              echo "${resolved}"
             fi
           }
 
