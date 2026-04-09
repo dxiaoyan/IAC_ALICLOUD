@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Prepare output directory
         shell: bash
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload KICS SARIF artifact (fallback when code scanning disabled)
         if: always() && vars.ENABLE_CODE_SCANNING_UPLOAD != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kics-sarif
           path: kics-results/results.sarif

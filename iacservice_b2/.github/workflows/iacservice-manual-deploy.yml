@@ -18,14 +18,13 @@ on:
         options:
           - plan
           - apply
-          - destroy
       stacks:
         description: "Comma-separated stack names under stacks/ (e.g. core,network/base)"
         required: true
         default: "core"
         type: string
       confirm_token:
-        description: "For prd apply/destroy, input APPLY_PRD"
+        description: "For prd apply, input APPLY_PRD"
         required: false
         default: ""
         type: string
@@ -58,10 +57,10 @@ jobs:
       LILLY_PRD_MODULE_ID: ${{ secrets.LILLY_PRD_MODULE_ID }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -83,9 +82,9 @@ jobs:
           STACKS_RAW="${{ inputs.stacks }}"
           PROJECT_DIR="${PROJECT_DIR}"
 
-          if [[ ("${ACTION}" == "apply" || "${ACTION}" == "destroy") && "${ENV_NAME}" == "prd" ]]; then
+          if [[ "${ACTION}" == "apply" && "${ENV_NAME}" == "prd" ]]; then
             if [[ "${{ inputs.confirm_token }}" != "APPLY_PRD" ]]; then
-              echo "prd apply/destroy requires confirm_token=APPLY_PRD"
+              echo "prd apply requires confirm_token=APPLY_PRD"
               exit 1
             fi
           fi
@@ -230,25 +229,25 @@ jobs:
 
       - name: Upload plan result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iacservice-plan-result-${{ inputs.environment }}
           path: iacservice_b2/execution_result_plan.md
 
   approval:
     name: Approval
-    if: ${{ inputs.action == 'apply' || inputs.action == 'destroy' }}
+    if: ${{ inputs.action == 'apply' }}
     needs:
       - plan
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
       - name: Approval checkpoint
-        run: echo "Waiting for environment approval before apply/destroy."
+        run: echo "Waiting for environment approval before apply."
 
   apply:
     name: Apply
-    if: ${{ inputs.action == 'apply' || inputs.action == 'destroy' }}
+    if: ${{ inputs.action == 'apply' }}
     needs:
       - plan
       - approval
@@ -268,10 +267,10 @@ jobs:
       LILLY_PRD_MODULE_ID: ${{ secrets.LILLY_PRD_MODULE_ID }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -361,9 +360,6 @@ jobs:
           fi
 
           EXEC_ACTION="terraform apply"
-          if [[ "${ACTION}" == "destroy" ]]; then
-            EXEC_ACTION="terraform destroy"
-          fi
 
           set +e
           TRIGGER_OUTPUT="$(python scripts/trigger_stack.py \
@@ -395,7 +391,7 @@ jobs:
 
       - name: Upload action result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iacservice-${{ inputs.action }}-result-${{ inputs.environment }}
           path: iacservice_b2/${{ env.RESULT_FILE }}
