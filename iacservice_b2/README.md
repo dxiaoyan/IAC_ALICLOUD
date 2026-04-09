@@ -30,7 +30,11 @@ The workflow in this project supports:
 - Trigger `terraform apply` using the same module version from plan
 - Poll and export apply result
 
-3. `prd` protection
+3. Approval policy
+- `action=plan`: no approval required (plan job does not bind GitHub Environment)
+- `action=apply`: approval required (single approval at `approval` job)
+
+4. `prd` protection
 - When `environment=prd` and `action=apply`, requires `confirm_token=APPLY_PRD`
 
 ## Required GitHub Environment Secrets

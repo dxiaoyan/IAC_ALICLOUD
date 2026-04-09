@@ -1,5 +1,8 @@
 format_version: IaCService/2021-08-06
 description: Lilly dev core deployment
+locals: 
+  vpc_id: "vpc-uf6ucxlr76pdz2nnpmvxb"
+  vswitch_id: "vsw-uf60lfcezcz5taj2o8sqi"
 
 deployment:
   - name: dev-core
@@ -13,8 +16,9 @@ deployment:
         timezone: "Asia/Shanghai"
         vpc:
           test_cidr: "10.210.0.0/20"
-          vpc_id: ""
-          vswitch_id: ""
+          vpc_id: local.vpc_id
+          # vpc_id: "vpc-uf6ucxlr76pdz2nnpmvxb"
+          vswitch_id: local.vswitch_id
           ecs_private_ip: ""
 
       tags:
@@ -63,7 +67,7 @@ deployment:
           priority: 1
           cidr_ip: "0.0.0.0/0"
 
-      create_instance: true
+      create_instance: false
       instances:
         - instance_name: "lilly-dev-app-01"
           instance_type: "ecs.c6.large"

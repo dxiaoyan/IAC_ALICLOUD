@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload tfsec SARIF artifact (fallback for fork PR or disabled code scanning)
         if: always() && (github.event.pull_request.head.repo.full_name != github.repository || vars.ENABLE_CODE_SCANNING_UPLOAD != 'true')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfsec-sarif
           path: tfsec.sarif

@@ -83,33 +83,18 @@ variable "image_id" {
   description = "Image ID for ECS instance"
   type        = string
   default     = ""
-
-  validation {
-    condition     = !var.create_instance || length(var.instances) > 0 || trimspace(var.image_id) != ""
-    error_message = "When create_instance=true, image_id must be provided."
-  }
 }
 
 variable "vswitch_id" {
   description = "vSwitch ID for ECS instance"
   type        = string
   default     = ""
-
-  validation {
-    condition     = !var.create_instance || length(var.instances) > 0 || trimspace(var.vswitch_id) != ""
-    error_message = "When create_instance=true, vswitch_id must be provided."
-  }
 }
 
 variable "security_group_ids" {
   description = "Security group IDs for ECS instance"
   type        = list(string)
   default     = []
-
-  validation {
-    condition     = !var.create_instance || length(var.instances) > 0 || length(var.security_group_ids) > 0
-    error_message = "When create_instance=true, at least one security_group_id must be provided."
-  }
 }
 
 variable "private_ip" {
@@ -171,11 +156,6 @@ variable "password" {
   type        = string
   default     = ""
   sensitive   = true
-
-  validation {
-    condition     = !var.create_instance || length(var.instances) > 0 || trimspace(var.key_name) != "" || trimspace(var.password) != ""
-    error_message = "When create_instance=true, provide key_name or password."
-  }
 }
 
 variable "user_data" {

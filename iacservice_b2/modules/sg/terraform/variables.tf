@@ -66,16 +66,6 @@ variable "vpc_id" {
   description = "VPC ID where the security group will be created"
   type        = string
   default     = ""
-
-  validation {
-    condition = (
-      (!var.create_security_group || trimspace(var.vpc_id) != "") &&
-      alltrue([
-        for sg in var.security_groups : trimspace(try(sg.vpc_id, "")) != "" || trimspace(var.vpc_id) != ""
-      ])
-    )
-    error_message = "When creating SG, vpc_id must be provided either at module level or per security_groups item."
-  }
 }
 
 variable "ingress_rules" {

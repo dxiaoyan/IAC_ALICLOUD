@@ -1,6 +1,6 @@
 locals {
   module_name       = "sg"
-  create_primary_sg = var.create_security_group && trimspace(var.vpc_id) != ""
+  create_primary_sg = var.create_security_group
   additional_sgs = {
     for idx, sg in var.security_groups :
     format("%03d-%s", idx + 1, sg.security_group_name) => sg
@@ -15,6 +15,13 @@ resource "alicloud_security_group" "this" {
   description         = var.security_group_description
   vpc_id              = var.vpc_id
   tags                = var.tags
+
+  lifecycle {
+    precondition {
+      condition     = try(trimspace(var.vpc_id), "") != ""
+      error_message = "When create_security_group=true, vpc_id must be provided."
+    }
+  }
 }
 
 resource "alicloud_security_group" "extra" {
@@ -24,6 +31,13 @@ resource "alicloud_security_group" "extra" {
   description         = each.value.security_group_description
   vpc_id              = trimspace(try(each.value.vpc_id, "")) != "" ? each.value.vpc_id : var.vpc_id
   tags                = merge(var.tags, try(each.value.tags, {}))
+
+  lifecycle {
+    precondition {
+      condition     = try(trimspace(each.value.vpc_id), "") != "" || try(trimspace(var.vpc_id), "") != ""
+      error_message = "Each security_groups item must provide vpc_id or module-level vpc_id must be set."
+    }
+  }
 }
 
 resource "alicloud_security_group_rule" "ingress" {
