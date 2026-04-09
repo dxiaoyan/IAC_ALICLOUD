@@ -91,3 +91,38 @@ variable "existing_vswitch_id" {
   default     = ""
 }
 
+variable "enable_vpc_flow_log" {
+  description = "Whether to create VPC flow log for the VPC created by this module"
+  type        = bool
+  default     = false
+}
+
+variable "vpc_flow_log_name" {
+  description = "Flow log name. When empty, defaults to <vpc_name>-flowlog"
+  type        = string
+  default     = ""
+}
+
+variable "flow_log_project_name" {
+  description = "SLS project name for VPC flow logs when enable_vpc_flow_log=true"
+  type        = string
+  default     = ""
+}
+
+variable "flow_log_store_name" {
+  description = "SLS logstore name for VPC flow logs when enable_vpc_flow_log=true"
+  type        = string
+  default     = ""
+}
+
+variable "vpc_flow_log_traffic_type" {
+  description = "VPC flow log traffic type: All, Allow, or Drop"
+  type        = string
+  default     = "All"
+
+  validation {
+    condition     = contains(["All", "Allow", "Drop"], var.vpc_flow_log_traffic_type)
+    error_message = "vpc_flow_log_traffic_type must be one of: All, Allow, Drop."
+  }
+}
+

@@ -13,6 +13,7 @@ locals {
 
   vpc_id     = var.create_vpc ? alicloud_vpc.this[0].id : (local.upstream_vpc_id != "" ? local.upstream_vpc_id : null)
   vswitch_id = var.create_vswitch ? alicloud_vswitch.this[0].id : (local.upstream_vswitch_id != "" ? local.upstream_vswitch_id : null)
+  vpc_flow_log_name = trimspace(var.vpc_flow_log_name) != "" ? trimspace(var.vpc_flow_log_name) : "${var.vpc_name}-flowlog"
 
   vpc_test_cidr_valid = local.vpc_test_cidr != null && can(cidrhost(local.vpc_test_cidr, 0))
   ecs_private_ip      = try(trimspace(local.ecs_private_ip_input), "") != "" ? trimspace(local.ecs_private_ip_input) : (local.vpc_test_cidr_valid ? cidrhost(local.vpc_test_cidr, 2) : null)
@@ -59,6 +60,29 @@ resource "alicloud_vswitch" "this" {
     precondition {
       condition     = trimspace(var.create_vpc ? alicloud_vpc.this[0].id : local.upstream_vpc_id) != ""
       error_message = "When create_vswitch=true, an upstream vpc_id (or create_vpc=true) is required."
+    }
+  }
+}
+
+resource "alicloud_vpc_flow_log" "this" {
+  count = var.create_vpc && var.enable_vpc_flow_log ? 1 : 0
+
+  flow_log_name  = local.vpc_flow_log_name
+  project_name   = trimspace(var.flow_log_project_name)
+  log_store_name = trimspace(var.flow_log_store_name)
+  resource_type  = "VPC"
+  resource_id    = alicloud_vpc.this[0].id
+  traffic_type   = var.vpc_flow_log_traffic_type
+
+  lifecycle {
+    precondition {
+      condition     = trimspace(var.flow_log_project_name) != ""
+      error_message = "When enable_vpc_flow_log=true, flow_log_project_name must be provided."
+    }
+
+    precondition {
+      condition     = trimspace(var.flow_log_store_name) != ""
+      error_message = "When enable_vpc_flow_log=true, flow_log_store_name must be provided."
     }
   }
 }

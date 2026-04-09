@@ -42,3 +42,8 @@ output "ecs_private_ip" {
   value       = local.ecs_private_ip
   description = "Recommended ECS private IP for downstream modules"
 }
+
+output "vpc_flow_log_id" {
+  value       = try(alicloud_vpc_flow_log.this[0].id, null)
+  description = "VPC flow log ID when enable_vpc_flow_log=true"
+}
