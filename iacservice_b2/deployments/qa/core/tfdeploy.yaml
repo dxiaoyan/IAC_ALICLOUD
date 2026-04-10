@@ -46,3 +46,14 @@ deployment:
       internet_max_bandwidth_out: 0
       system_disk_category: "cloud_essd"
       system_disk_size: 80
+
+      create_mysql_user: false
+      rds_mysql_instance_id: ""
+      mysql_user_account_name: "userA"
+      mysql_user_account_description: "Lilly app user A"
+      mysql_user_account_type: "Normal"
+      mysql_user_password_secret_name: ""
+      mysql_user_secret_version_stage: "ACSCurrent"
+      mysql_user_secret_password_field: "password"
+      mysql_user_db_names: []
+      mysql_user_db_privilege: "ReadOnly"

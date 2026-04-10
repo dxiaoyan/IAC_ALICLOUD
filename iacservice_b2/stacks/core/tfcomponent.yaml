@@ -101,6 +101,37 @@ variable:
     type: number
     default: 80
 
+  - name: create_mysql_user
+    type: bool
+    default: false
+  - name: rds_mysql_instance_id
+    type: string
+    default: ""
+  - name: mysql_user_account_name
+    type: string
+    default: "userA"
+  - name: mysql_user_account_description
+    type: string
+    default: "Managed by IaCService B2"
+  - name: mysql_user_account_type
+    type: string
+    default: "Normal"
+  - name: mysql_user_password_secret_name
+    type: string
+    default: ""
+  - name: mysql_user_secret_version_stage
+    type: string
+    default: "ACSCurrent"
+  - name: mysql_user_secret_password_field
+    type: string
+    default: "password"
+  - name: mysql_user_db_names
+    type: any
+    default: []
+  - name: mysql_user_db_privilege
+    type: string
+    default: "ReadOnly"
+
 required_providers:
   - name: alicloud
     source: aliyun/alicloud
@@ -175,6 +206,22 @@ component:
       - component.vpc_inputs
       - component.sg
 
+  - name: mysql_user
+    source: "../../modules/mysql_user/terraform"
+    inputs:
+      create_mysql_user: var.create_mysql_user
+      db_instance_id: var.rds_mysql_instance_id
+      account_name: var.mysql_user_account_name
+      account_description: var.mysql_user_account_description
+      account_type: var.mysql_user_account_type
+      kms_secret_name: var.mysql_user_password_secret_name
+      secret_version_stage: var.mysql_user_secret_version_stage
+      secret_password_field: var.mysql_user_secret_password_field
+      db_names: var.mysql_user_db_names
+      privilege: var.mysql_user_db_privilege
+    providers:
+      alicloud: provider.alicloud.this
+
 output:
   - name: vpc_id
     type: string
@@ -188,3 +235,9 @@ output:
   - name: ecs_instance_ids
     type: map(string)
     value: component.ecs.instance_ids
+  - name: mysql_user_created
+    type: bool
+    value: component.mysql_user.created
+  - name: mysql_user_account_name
+    type: string
+    value: component.mysql_user.account_name

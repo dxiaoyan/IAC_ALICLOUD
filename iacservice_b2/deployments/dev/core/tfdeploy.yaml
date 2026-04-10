@@ -67,7 +67,7 @@ deployment:
           priority: 1
           cidr_ip: "0.0.0.0/0"
 
-      create_instance: true
+      create_instance: false
       instances:
         - instance_name: "lilly-dev-app-01"
           instance_type: "ecs.c6.large"
@@ -99,3 +99,14 @@ deployment:
             #!/bin/bash
             set -e
             hostnamectl set-hostname lilly-dev-template-ecs-01
+
+      create_mysql_user: false
+      rds_mysql_instance_id: ""
+      mysql_user_account_name: "userA"
+      mysql_user_account_description: "Lilly app user A"
+      mysql_user_account_type: "Normal"
+      mysql_user_password_secret_name: ""
+      mysql_user_secret_version_stage: "ACSCurrent"
+      mysql_user_secret_password_field: "password"
+      mysql_user_db_names: []
+      mysql_user_db_privilege: "ReadOnly"
